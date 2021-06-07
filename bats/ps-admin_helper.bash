@@ -183,8 +183,13 @@ check_rocksdb_exists() {
   result=$(mysql ${CONNECTION} -N -s -e 'select count(*) from information_schema.ENGINES where ENGINE="ROCKSDB" and SUPPORT <> "NO";')
   [ "$result" -eq 1 ]
 
-  result=$(mysql ${CONNECTION} -N -s -e 'select count(*) from information_schema.PLUGINS where PLUGIN_NAME like BINARY "%ROCKSDB%" and PLUGIN_STATUS like "ACTIVE";')
-  [ "$result" -eq 13 ]
+  if [ ${MYSQL_VERSION} = "8.0" ]; then
+    result=$(mysql ${CONNECTION} -N -s -e 'select count(*) from information_schema.PLUGINS where PLUGIN_NAME like BINARY "%ROCKSDB%" and PLUGIN_STATUS like "ACTIVE";')
+    [ "$result" -eq 15 ]
+  else
+    result=$(mysql ${CONNECTION} -N -s -e 'select count(*) from information_schema.PLUGINS where PLUGIN_NAME like BINARY "%ROCKSDB%" and PLUGIN_STATUS like "ACTIVE";')
+    [ "$result" -eq 13 ]
+  fi
 }
 
 uninstall_rocksdb() {
@@ -201,9 +206,7 @@ check_rocksdb_notexists() {
 }
 
 install_all() {
-  if [ ${MYSQL_VERSION} = "5.5" ]; then
-    OPT="--enable-qrt"
-  elif [ ${MYSQL_VERSION} = "5.6" ]; then
+  if [ ${MYSQL_VERSION} = "5.6" ]; then
     OPT="--enable-qrt --enable-tokudb --enable-tokubackup"
   elif [ ${MYSQL_VERSION} = "5.7" ]; then
     OPT="--enable-qrt --enable-mysqlx --enable-tokudb --enable-tokubackup --enable-rocksdb"
@@ -232,9 +235,7 @@ install_all() {
 }
 
 uninstall_all() {
-  if [ ${MYSQL_VERSION} = "5.5" ]; then
-    OPT="--disable-qrt"
-  elif [ ${MYSQL_VERSION} = "5.6" ]; then
+  if [ ${MYSQL_VERSION} = "5.6" ]; then
     OPT="--disable-qrt --disable-tokudb --disable-tokubackup"
   elif [ ${MYSQL_VERSION} = "5.7" ]; then
     OPT="--disable-qrt --disable-mysqlx --disable-tokudb --disable-tokubackup --disable-rocksdb"

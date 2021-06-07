@@ -10,24 +10,34 @@
 - hosts: all
   become: true
   become_method: sudo
-  vars:
-    vault_token: "{{ lookup('env', 'VAULT_TEST_TOKEN') }}"
-    vault_cert: "{{ lookup('env', 'VAULT_TEST_CERT') }}"
 
   tasks:
   - name: include tasks for test env setup
     include_tasks: ../tasks/test_prep.yml
 
+  - name: include tasks for local vault setup
+    include_tasks: ../tasks/setup_local_vault.yml
+
   - name: setup config file for keyring vault
-    template: src=../scripts/ps_keyring_plugins_test/keyring_vault_test.j2
+    template: src=../scripts/ps_keyring_plugins_test/keyring_vault_test_v2.j2
               dest=/package-testing/scripts/ps_keyring_plugins_test/keyring_vault_test.cnf
               mode=0664 owner=root group=root
 
-  - name: copy certificate for keyring vault
-    copy:
-      src: "{{ vault_cert }}"
-      dest: /package-testing/scripts/ps_keyring_plugins_test/test.cer
-    when: lookup('env', 'PS_SKIP_KEYRING') == "" or lookup('env', 'PS_SKIP_KEYRING') == "0"
+  - name: enforce SELinux on CentOS
+    selinux:
+      policy: targeted
+      state: enforcing
+    when: ansible_os_family == "RedHat"
+
+  - name: get selinux status
+    command: sestatus
+    register: selinux_status
+    when: ansible_os_family == "RedHat"
+
+  - name: list selinux status
+    debug:
+      var: selinux_status
+    when: ansible_os_family == "RedHat"
 
   - name: include tasks for enabling PS 8 test repo
     include: ../tasks/enable_ps8_main_repo.yml
@@ -94,15 +104,14 @@
   - name: install percona-mysql-shell package
     include_tasks: ../tasks/install_pshell.yml
 
-  - name: check that Percona Server version is correct
-    command: /package-testing/version_check.sh ps80
+# - name: check that Percona Server version is correct
+#   command: /package-testing/version_check.sh ps80
 
-  - name: check that Percona Server package versions are correct
-    command: /package-testing/package_check.sh ps80
+# - name: check that Percona Server package versions are correct
+#   command: /package-testing/package_check.sh ps80
 
   - name: keyring plugins test
     command: /package-testing/scripts/ps_keyring_plugins_test/ps_keyring_plugins_test.sh ps80
-    when: lookup('env', 'PS_SKIP_KEYRING') == "" or lookup('env', 'PS_SKIP_KEYRING') == "0"
 
   - name: re-run ps_admin to install rocksdb
     command: /usr/bin/ps-admin --enable-rocksdb

@@ -152,9 +152,13 @@
 
     - name: Dump instance config
       copy:
-        content: "{{ instance_conf | to_json | from_json | molecule_to_yaml | molecule_header }}"
+        content: "{{ instance_conf | to_json | from_json | to_yaml }}"
         dest: "{{ molecule_instance_config }}"
       when: server.changed | bool
+
+    - name: Print config dict
+      debug:
+        var: instance_config_dict
 
     - name: Wait for SSH
       wait_for:
@@ -163,7 +167,7 @@
         search_regex: SSH
         delay: 10
         timeout: 320
-      with_items: "{{ lookup('file', molecule_instance_config) | molecule_from_yaml }}"
+      with_items: "{{ lookup('file', molecule_instance_config) | from_yaml }}"
 
     - name: Wait for boot process to finish
       pause:
